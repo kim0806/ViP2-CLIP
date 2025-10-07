@@ -1,10 +1,10 @@
-# ViP$^{2}$-CLIP
-> [**ViP$^2$-CLIP: Visual-Perception Prompting with Unified Alignment for Zero-Shot Anomaly Detection**](https://arxiv.org/pdf/2505.17692v3)
+# ViP²-CLIP
+> [**ViP²-CLIP: Visual-Perception Prompting with Unified Alignment for Zero-Shot Anomaly Detection**](https://arxiv.org/pdf/2505.17692v3)
 
 ## Introduction 
 Zero‑shot anomaly detection (ZSAD) aims to detect anomalies without any target domain training samples, relying solely on external auxiliary data. Existing CLIP-based methods attempt to activate the model's ZSAD potential via handcrafted or static learnable prompts. The former incur high engineering costs and limited semantic coverage, whereas the latter apply identical descriptions across diverse anomaly types, thus fail to adapt to complex variations. Furthermore, since CLIP is originally pretrained on large-scale classification tasks, its anomaly segmentation quality is highly sensitive to the exact wording of class names, severely constraining prompting strategies that depend on class labels. To address these challenges, we introduce ViP$^{2}$-CLIP. The key insight of ViP$^{2}$-CLIP is a Visual‑Perception Prompting (ViP‑Prompt) mechanism, which fuses global and multi‑scale local visual context to adaptively generate fine‑grained textual prompts, eliminating manual templates and class-name priors. This design enables our model to focus on precise abnormal regions, making it particularly valuable when category labels are ambiguous or privacy-constrained. Extensive experiments on 15 industrial and medical benchmarks demonstrate that ViP$^{2}$-CLIP achieves state‑of‑the‑art performance and robust cross‑domain generalization. All experiments are implemented in PyTorch 2.6.0 on a single NVIDIA L20 (48 GB).
 
-## Overview of ViP$^{2}$-CLIP
+## Overview of ViP²-CLIP
 ![overview](./assets/overall.png)
 
 ## QUICK START
@@ -51,7 +51,7 @@ python mvtec.py
 Change the root to the path of your MVTec dataset. You may need to slightly adjust the code depending on the directory structure of your downloaded data. 
 
 
-### Run ViP$^{2}$-CLIP
+### Run ViP²-CLIP
 
 * Environment Setup
 
@@ -63,7 +63,8 @@ pip install -r requirements.txt
 ```
 
 * Quick start (use the pre-trained weights from models/)
-We fine-tune ViP$^{2}$-CLIP on MVTec AD’s test split and evaluate ZSAD performance on all other datasets; for MVTec AD, we fine-tune on VisA’s test set.
+
+We fine-tune ViP²-CLIP on MVTec AD’s test split and evaluate ZSAD performance on all other datasets; for MVTec AD, we fine-tune on VisA’s test set.
 
 ```bash
 bash test.sh
@@ -96,9 +97,10 @@ bash train.sh
 
 ![brain](./assets/7.png) 
 
-* We thank for the code repository: [open_clip](https://github.com/mlfoundations/open_clip), [AnomalyCLIP](https://github.com/zqhang/AnomalyCLIP), and [VCP-CLIP](https://github.com/xiaozhen228/VCP-CLIP).
 
 ## BibTex Citation
+
+* We thank for the code repository: [open_clip](https://github.com/mlfoundations/open_clip), [AnomalyCLIP](https://github.com/zqhang/AnomalyCLIP), and [VCP-CLIP](https://github.com/xiaozhen228/VCP-CLIP).
 
 If you find this paper and repository useful, please cite our paper.
 
