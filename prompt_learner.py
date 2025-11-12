@@ -7,6 +7,8 @@ from VIP2CLIP_lib.simple_tokenizer import SimpleTokenizer as _Tokenizer
 from copy import deepcopy
 import torch.nn as nn
 import numpy as np
+import torch.nn as nn
+import torch.nn.functional as F
 
 _tokenizer = _Tokenizer()
 
@@ -270,7 +272,33 @@ class FGP(nn.Module):
         return F_t_a
 
 
+class EnhancedTokenSelector(nn.Module):
+    def __init__(self, input_dim, hidden_dim=None):
+        super().__init__()
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim or input_dim // 4  # 默认隐藏层维度
+        
+        # 两个线性层 + ReLU
+        self.attention_net = nn.Sequential(
+            nn.Linear(input_dim, self.hidden_dim),
+            nn.ReLU(),  # 增加非线性
+            nn.Linear(self.hidden_dim, 1)  # 输出每个token的权重
+        )
 
+    def forward(self, x):
+        N, L, D = x.shape
+        
+        # 1. 生成注意力权重 (N, L, 1)
+        attention_scores = self.attention_net(x)  # (N, L, 1)
+        
+        # 2. 归一化为概率分布
+        attention_weights = F.softmax(attention_scores, dim=1)  # (N, L, 1)
+        
+        # 3. 加权聚合
+        weighted_features = attention_weights * x  # (N, L, D)
+        aggregated_output = torch.sum(weighted_features, dim=1, keepdim=True)  # (N, 1, D)
+        
+        return aggregated_output
 
 
 

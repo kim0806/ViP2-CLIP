@@ -6,7 +6,7 @@ from utils import get_similarity_map,get_transform
 from scipy.ndimage import gaussian_filter
 from dataset import Dataset
 import VIP2CLIP_lib
-from prompt_learner import ICA,FGP
+from prompt_learner import ICA,FGP,EnhancedTokenSelector
 from tqdm import tqdm
 import argparse
 from visualization import visualizer
@@ -40,6 +40,9 @@ def test(args):
     fgp_learner=FGP(dim_v=768,dim_t=768,dim_out=768)
     fgp_learner.load_state_dict(ckpt['Zero_try'])
     fgp_learner.to(device)
+    patch_selecter=EnhancedTokenSelector(input_dim=768)
+    patch_selecter.load_state_dict(ckpt['patch_selecter'])
+    patch_selecter.to(device)
     model.to(device)
 
     results={}
@@ -89,16 +92,15 @@ def test(args):
                     patch_feature=patch_feature/patch_feature.norm(dim=-1,keepdim=True)
                     aux_text_embeddings=fgp_learner(text_embeddings,patch_feature[:,1:,:])
                     similarity=torch.matmul(patch_feature[:,1:,:],aux_text_embeddings.transpose(1,2))
-                    scores=similarity
                     similarity = (similarity / 0.07).softmax(-1)
                     similarity_map=get_similarity_map(similarity,args.image_size)
                     similarity_map=(similarity_map[...,1]+1-similarity_map[...,0])/2.0
                     similarity_map_list.append(similarity_map)
 
-                    topk_values,topk_indices=torch.topk(similarity[:,:,1],k=args.topk,dim=-1,largest=True,sorted=False)
-                    batch_incides=torch.arange(scores.size(0),device=device).unsqueeze(1).expand(-1,args.topk)
-                    topk_scores=scores[batch_incides,topk_indices]
-                    anomaly_score_list.append(topk_scores)
+                    #n,1,d
+                    agg_patch_feature=patch_selecter(patch_feature[:,1:,:])
+                    scores=torch.matmul(agg_patch_feature,aux_text_embeddings.transpose(1,2))
+                    anomaly_score_list.append(scores) #n,1,2
             
             mean_scores=torch.mean(torch.cat(anomaly_score_list,dim=1),dim=1)
             mean_scores=(mean_scores/0.07).softmax(dim=-1)

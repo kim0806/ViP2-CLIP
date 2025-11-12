@@ -100,3 +100,19 @@ class BinaryDiceLoss(nn.Module):
         N_dice_eff = (2 * intersection.sum(1) + smooth) / (input_flat.sum(1) + targets_flat.sum(1) + smooth)
         loss = 1 - N_dice_eff.sum() / N
         return loss
+
+
+class TripletLoss(nn.Module):
+    def __init__(self, margin=0.5):
+        super().__init__()
+        self.margin = margin
+
+    def forward(self, a, b, c):
+
+        # 计算余弦相似度
+        sim_ab = F.cosine_similarity(a, b, dim=-1)  # 希望越小越好
+        sim_ac = F.cosine_similarity(a, c, dim=-1)  # 希望越大越好
+        
+        # 损失：希望 sim_ac - sim_ab > margin
+        loss = F.relu(sim_ab - sim_ac + self.margin).mean()
+        return loss

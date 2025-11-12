@@ -6,7 +6,8 @@ from utils import get_transform
 from dataset import Dataset
 from prompt_learner import ICA
 from prompt_learner import FGP
-from loss import FocalLoss, BinaryDiceLoss
+from prompt_learner import EnhancedTokenSelector
+from loss import FocalLoss, BinaryDiceLoss,TripletLoss
 from tqdm import tqdm
 import torch.nn.functional as F
 import os
@@ -41,15 +42,19 @@ def train(args):
     ica_prompt_learner.to(device)
     fgp_learner=FGP(dim_v=768,dim_t=768,dim_out=768)
     fgp_learner.to(device)
+    patch_selecter=EnhancedTokenSelector(input_dim=768)
+    patch_selecter.to(device)
     model.to(device)
 
     optimizer=torch.optim.Adam([
         {"params":ica_prompt_learner.parameters(),"lr":args.learning_rate},
-        {"params":fgp_learner.parameters(),"lr":args.learning_rate*0.01}
+        {"params":fgp_learner.parameters(),"lr":args.learning_rate*0.01},
+        {"params":patch_selecter.parameters(),"lr":args.learning_rate*0.01},
     ])
 
     loss_focal=FocalLoss()
     loss_dice=BinaryDiceLoss()
+    loss_triple=TripletLoss()
 
     model.eval()
     ica_prompt_learner.train()
@@ -84,18 +89,16 @@ def train(args):
                     #n,2,d
                     aux_text_embeddings=fgp_learner(text_embeddings,patch_feature[:,1:,:])
                     similarity=torch.matmul(patch_feature[:,1:,:],aux_text_embeddings.transpose(1,2))
-                    scores=similarity
                     similarity=(similarity/0.07).softmax(dim=-1)
                     similarity_map=get_similarity_map(similarity,args.image_size).permute(0,3,1,2)
                     similarity_map_list.append(similarity_map)
 
-                    topk_values,topk_indices=torch.topk(similarity[:,:,1],k=args.topk,dim=-1,largest=True,sorted=False)
-                    batch_indices=torch.arange(scores.size(0),device=scores.device).unsqueeze(1).expand(-1,args.topk)
-                    topk_scores=scores[batch_indices,topk_indices]
-                    #4 ,n topk 2
-                    anomaly_score_list.append(topk_scores)
-            
-            mean_score=torch.mean(torch.cat(anomaly_score_list,dim=1),dim=1)
+                    #n,1,d
+                    agg_patch_feature=patch_selecter(patch_feature[:,1:,:])
+                    scores=torch.matmul(agg_patch_feature,aux_text_embeddings.transpose(1,2))
+                    anomaly_score_list.append(scores) #n,1,2
+
+            mean_score=torch.mean(torch.cat(anomaly_score_list,dim=1),dim=1) #n,2
             mean_score=(mean_score/0.07)
             anomaly_loss=F.cross_entropy(mean_score,label.long().cuda())
             image_loss_list.append(anomaly_loss.item())
@@ -116,7 +119,7 @@ def train(args):
         
         if (epoch+1)%args.save_freq==0 and (epoch+1)>=5:
             ckpt_path=os.path.join(args.save_path,f'epoch_{epoch+1}.pth')
-            torch.save({"prompt_learner": ica_prompt_learner.state_dict(), "Zero_try": fgp_learner.state_dict()}, ckpt_path)
+            torch.save({"prompt_learner": ica_prompt_learner.state_dict(), "Zero_try": fgp_learner.state_dict(),"patch_selecter":patch_selecter.state_dict()}, ckpt_path)
 
 if __name__=='__main__':
     parser=argparse.ArgumentParser("VIP2CLIP",add_help=False)
